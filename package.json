@@ -1,0 +1,22 @@
+{
+  "name": "task-manager-api",
+  "version": "1.0.0",
+  "description": "Node & Express App for Learning",
+  "main": "src/index.ts",
+  "type": "module",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev": "tsx watch src/index.ts"
+  },
+  "author": "Hamza & Claude Sonnet 4.6",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/express": "^5.0.6",
+    "@types/node": "^25.5.2",
+    "tsx": "^4.21.0",
+    "typescript": "^6.0.2"
+  },
+  "dependencies": {
+    "express": "^5.2.1"
+  }
+}
