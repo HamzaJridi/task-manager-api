@@ -1,0 +1,50 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+build/
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IntelliJ / JetBrains IDE files
+.idea/
+*.iml
+*.ipr
+*.iws
+out/
+.idea_modules/
+
+# VS Code
+.vscode/
+
+# Claude AI files
+.claude/
+.claude_files/
+CLAUDE.md
+claude.md
+.clauderc
+claude_context/
+
+# GitHub Copilot files
+.copilot/
+.github/copilot-instructions.md
+.copilotignore
+
+# TypeScript cache
+*.tsbuildinfo
+

@@ -1,27 +1,74 @@
 import express from "express";
+import { randomUUID } from 'crypto';
 
-const app = express();
+const router = express.Router();
 
-let tasks = [
+const TASK_STATUSES = ['todo', 'in progress', 'done'] as const;
+
+type TaskStatus = (typeof TASK_STATUSES)[number];
+
+type Task = {
+  id: string;
+  name: string;
+  description: string;
+  status: TaskStatus;
+};
+
+const isTaskStatus = (value: unknown): value is TaskStatus => {
+  return typeof value === 'string' && TASK_STATUSES.includes(value as TaskStatus);
+};
+
+const isNonEmptyString = (value: unknown): value is string => {
+  return typeof value === 'string' && value.trim().length > 0;
+};
+
+const toTask = (value: unknown): Task | null => {
+  if (!value || typeof value !== 'object') {
+    return null;
+  }
+
+  const task = value as Partial<Task>;
+
+  if (
+    !isNonEmptyString(task.id) ||
+    !isNonEmptyString(task.name) ||
+    !isNonEmptyString(task.description) ||
+    !isTaskStatus(task.status)
+  ) {
+    return null;
+  }
+
+  return {
+    id: task.id,
+    name: task.name.trim(),
+    description: task.description.trim(),
+    status: task.status,
+  };
+};
+
+let tasks: Task[] = [
   {
     id: "1", name: 'Task 1',
     description: 'Task 1',
+    status: 'todo',
   },
   {
     id: "2", name: 'Task 2',
     description: 'Task 2',
+    status: 'in progress',
   },
   {
     id: "3", name: 'Task 3',
     description: 'Task 3',
+    status: 'done',
   },
 ]
 
-app.get('/api/tasks', (req, res) => {
-  res.send(tasks);
+router.get('/tasks', (req, res) => {
+  res.json(tasks);
 })
 
-app.get('/api/tasks/:id', (req, res) => {
+router.get('/tasks/:id', (req, res) => {
   const id = req.params.id;
   const task = tasks.find((x) => x.id === id);
 
@@ -32,37 +79,74 @@ app.get('/api/tasks/:id', (req, res) => {
   return res.json(task);
 })
 
+router.post('/tasks', (req, res) => {
+  const task = toTask({
+    id: randomUUID(),
+    ...req.body,
+  });
 
-app.post('/api/tasks', (req, res) => {
-  const task = req.body;
-  if (!task || !task.name || !task.description) {
-    return res.status(400).send('Bad Request');
+  if (!task) {
+    return res.status(400).json({
+      message: 'Bad Request',
+      details: {
+        requiredFields: ['name', 'description', 'status'],
+        allowedStatusValues: TASK_STATUSES,
+      },
+    });
   }
 
-  task.id = crypto.randomUUID();
   tasks.push(task);
   return res.status(201).json(task);
 })
 
-app.put('/api/tasks/:id', (req, res) => {
+router.put('/tasks/:id', (req, res) => {
   const id = req.params.id;
-  let task = tasks.find((x) => x.id === id);
+  const index = tasks.findIndex((x) => x.id === id);
 
-  if (!task) {
+  if (index === -1) {
     return res.status(404).send('Not Found');
   }
 
-  task = { ...task, ...req.body };
-  return res.json(task);
+  if (req.body?.id && req.body.id !== id) {
+    return res.status(400).json({
+      message: 'Bad Request',
+      details: {
+        id: 'Task id cannot be changed',
+      },
+    });
+  }
+
+  const updatedTask = toTask({
+    ...tasks[index],
+    ...req.body,
+    id,
+  });
+
+  if (!updatedTask) {
+    return res.status(400).json({
+      message: 'Bad Request',
+      details: {
+        requiredFields: ['name', 'description', 'status'],
+        allowedStatusValues: TASK_STATUSES,
+      },
+    });
+  }
+
+  tasks[index] = updatedTask;
+  return res.json(tasks[index]);
 })
 
-app.delete('/api/tasks/:id', (req, res) => {
+router.delete('/tasks/:id', (req, res) => {
   const id = req.params.id;
-  const task = tasks.find((x) => x.id !== id);
-  if (!task) {
+  const index = tasks.findIndex((x) => x.id === id);
+
+  if (index === -1) {
     return res.status(404).send('Not Found');
   }
 
-  tasks = tasks.filter((x) => x.id === id);
+  tasks = tasks.filter((x) => x.id !== id);
   return res.status(204).send();
 })
+
+export default router;
+
