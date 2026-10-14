@@ -1,21 +1,9 @@
-import express from 'express';
-import taskRouter from './routes/task.routes.js';
+// Entry point: loads .env, then starts the HTTP server.
+// Import order matters: 'dotenv/config' must run before anything reads process.env.
+import 'dotenv/config';
+import app from './app.js';
+import { env } from './schemas/env.schema.js';
 
-const app = express();
-
-app.use(express.json());
-
-app.get('/', (req, res) => {
-  res.send({ message: 'API is running' });
-})
-
-app.get('/health', (req, res) => {
-  res.send({ message: 'API is running', status: 'ok', timestamp: new Date() });
-})
-
-app.use('/api', taskRouter);
-
-
-app.listen(3000, () => {
-  console.log('Server running on http://localhost:3000');
+app.listen(env.PORT, () => {
+  console.log(`Server running on http://localhost:${env.PORT}`);
 });

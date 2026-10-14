@@ -9,6 +9,8 @@ build/
 .env
 .env.local
 .env.*.local
+.env.docker
+.env.test
 
 # Logs
 logs/
@@ -47,4 +49,6 @@ claude_context/
 
 # TypeScript cache
 *.tsbuildinfo
+
+prisma/generated/
 

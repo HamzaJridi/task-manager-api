@@ -1,152 +1,49 @@
+/**
+ * Task routes.
+ *
+ * 📌 Key concept — express.Router()
+ * A Router is a mini, mountable Express app. It lets you group related routes
+ * (here, everything about "tasks") in their own file, then mount the whole
+ * group under a prefix in index.ts (`app.use('/api', taskRouter)`), so every
+ * path below actually resolves as `/api/tasks`, `/api/tasks/:id`, etc.
+ *
+ * 📌 Key concept — Middleware chaining per-route.
+ * `router.post(path, middleware1, middleware2, ..., handler)` runs each
+ * function in order, calling `next()` to pass control along. If any
+ * middleware throws/calls `next(err)`, the chain stops and Express jumps
+ * straight to the error-handling middleware (see middlewares/error.middleware.ts).
+ *
+ *   schemaValidator(taskSchema)  → validates & sanitizes req.body first
+ *              │  (only calls next() if validation passes)
+ *              ▼
+ *   catchAsync(controllerFn)      → runs the controller, forwarding any
+ *                                    thrown/rejected error to next(err)
+ */
 import express from "express";
-import { randomUUID } from 'crypto';
+import {addTask, deleteTask, getTaskById, getTasks, updateTask} from "../controllers/task.controller.js";
+import {catchAsync} from "../utils/catchAsync.js";
+import {schemaValidator} from "../middlewares/validate.middleware.js";
+import {taskSchema} from "../schemas/task.schema.js";
+import {requireAuth} from "../middlewares/auth.middleware.js";
 
 const router = express.Router();
 
-const TASK_STATUSES = ['todo', 'in progress', 'done'] as const;
+router.use(requireAuth); // every route below this line requires a valid token
 
-type TaskStatus = (typeof TASK_STATUSES)[number];
+router.get('/tasks',catchAsync(getTasks))
 
-type Task = {
-  id: string;
-  name: string;
-  description: string;
-  status: TaskStatus;
-};
+router.get('/tasks/:id', catchAsync(getTaskById));
 
-const isTaskStatus = (value: unknown): value is TaskStatus => {
-  return typeof value === 'string' && TASK_STATUSES.includes(value as TaskStatus);
-};
+// Body is validated against taskSchema *before* addTask ever runs,
+// so the controller can trust req.body is well-formed.
+router.post('/tasks', schemaValidator(taskSchema), catchAsync(addTask));
 
-const isNonEmptyString = (value: unknown): value is string => {
-  return typeof value === 'string' && value.trim().length > 0;
-};
+router.put('/tasks/:id', schemaValidator(taskSchema), catchAsync(updateTask));
 
-const toTask = (value: unknown): Task | null => {
-  if (!value || typeof value !== 'object') {
-    return null;
-  }
+// No body to validate on DELETE — just needs the :id param.
+router.delete('/tasks/:id', catchAsync(deleteTask));
 
-  const task = value as Partial<Task>;
 
-  if (
-    !isNonEmptyString(task.id) ||
-    !isNonEmptyString(task.name) ||
-    !isNonEmptyString(task.description) ||
-    !isTaskStatus(task.status)
-  ) {
-    return null;
-  }
-
-  return {
-    id: task.id,
-    name: task.name.trim(),
-    description: task.description.trim(),
-    status: task.status,
-  };
-};
-
-let tasks: Task[] = [
-  {
-    id: "1", name: 'Task 1',
-    description: 'Task 1',
-    status: 'todo',
-  },
-  {
-    id: "2", name: 'Task 2',
-    description: 'Task 2',
-    status: 'in progress',
-  },
-  {
-    id: "3", name: 'Task 3',
-    description: 'Task 3',
-    status: 'done',
-  },
-]
-
-router.get('/tasks', (req, res) => {
-  res.json(tasks);
-})
-
-router.get('/tasks/:id', (req, res) => {
-  const id = req.params.id;
-  const task = tasks.find((x) => x.id === id);
-
-  if (!task) {
-    return res.status(404).send('Not Found');
-  }
-
-  return res.json(task);
-})
-
-router.post('/tasks', (req, res) => {
-  const task = toTask({
-    id: randomUUID(),
-    ...req.body,
-  });
-
-  if (!task) {
-    return res.status(400).json({
-      message: 'Bad Request',
-      details: {
-        requiredFields: ['name', 'description', 'status'],
-        allowedStatusValues: TASK_STATUSES,
-      },
-    });
-  }
-
-  tasks.push(task);
-  return res.status(201).json(task);
-})
-
-router.put('/tasks/:id', (req, res) => {
-  const id = req.params.id;
-  const index = tasks.findIndex((x) => x.id === id);
-
-  if (index === -1) {
-    return res.status(404).send('Not Found');
-  }
-
-  if (req.body?.id && req.body.id !== id) {
-    return res.status(400).json({
-      message: 'Bad Request',
-      details: {
-        id: 'Task id cannot be changed',
-      },
-    });
-  }
-
-  const updatedTask = toTask({
-    ...tasks[index],
-    ...req.body,
-    id,
-  });
-
-  if (!updatedTask) {
-    return res.status(400).json({
-      message: 'Bad Request',
-      details: {
-        requiredFields: ['name', 'description', 'status'],
-        allowedStatusValues: TASK_STATUSES,
-      },
-    });
-  }
-
-  tasks[index] = updatedTask;
-  return res.json(tasks[index]);
-})
-
-router.delete('/tasks/:id', (req, res) => {
-  const id = req.params.id;
-  const index = tasks.findIndex((x) => x.id === id);
-
-  if (index === -1) {
-    return res.status(404).send('Not Found');
-  }
-
-  tasks = tasks.filter((x) => x.id !== id);
-  return res.status(204).send();
-})
 
 export default router;
 
