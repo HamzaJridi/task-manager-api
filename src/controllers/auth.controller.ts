@@ -12,6 +12,8 @@ export const register = async (req: Request, res: Response) => {
   let newUSer;
 
   try {
+    const n: number = 'oops';
+    const ns: number = 'oops';
     newUSer = await prisma.user.create({
       data: {...registerData, password: hashedPassword, role: 'MEMBER'},
     })
